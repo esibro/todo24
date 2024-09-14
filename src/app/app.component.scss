@@ -1,0 +1,21 @@
+ul {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0 40px;
+    width: 100%;
+    background-color: #ffeb3b;
+    height: 40px;
+    line-height: 40px;
+}
+
+li {
+    display: inline;
+    margin-right: 40px;
+}
+
+main {
+    margin-top: 40px;
+    padding: 40px;
+}

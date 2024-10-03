@@ -6,11 +6,12 @@ import { io } from 'socket.io-client';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements OnInit {
+ export class AppComponent {}
+/*export class AppComponent implements OnInit {
   private socket: any;
   public oscData: any;
 
-  ngOnInit() {
+   ngOnInit() {
     this.socket = io('http://localhost:3000', {
       withCredentials: true, // Include credentials if necessary
     });
@@ -28,5 +29,5 @@ export class AppComponent implements OnInit {
   this.socket.on('disconnect', () => {
     console.log('Disconnected from WebSocket server');
   });
-  }
-}
+  } 
+}*/

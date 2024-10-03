@@ -1,4 +1,15 @@
+<!-- <h2>OSC Data:</h2>
 <div *ngIf="oscData">
-  <h2>OSC Data:</h2>
   <pre>{{ oscData | json }}</pre>
-</div>
+</div> -->
+
+<nav>
+  <ul>
+    <li><a routerLink="/todolist">Todo Liste</a></li>
+    <li><a routerLink="/dashboard">Dashboard</a></li>
+  </ul>
+</nav>
+
+<main>
+  <router-outlet></router-outlet>
+</main>

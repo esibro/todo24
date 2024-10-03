@@ -1,1 +1,15 @@
-<p>todo-list works!</p>
+<h2>Todos</h2>
+
+<div class="addItem">
+    Neues Todo: <input type="text" [(ngModel)]="todoDescription" required> <input type="number" [(ngModel)]="todoDifficulty" min="1" max="5" required> <button (click)="submitTodo()" [disabled]="todoDescription == '' || todoDifficulty < 1 || todoDifficulty > 5">Hinzufügen</button>
+</div>
+
+<p>Done anzeigen: <input type="checkbox" [(ngModel)]="showDone" checked></p>
+
+<div *ngFor="let item of todoListService.getTodos(showDone ? undefined : false)">
+    <button (click)="doneTodo(item.taskId)">Done</button> 
+    <button (click)="deleteTodo(item.taskId)">Löschen</button> 
+    <span [ngStyle]="{'text-decoration': (item.doneDate ? 'line-through' : 'none')}"><b> Task: </b>{{ item.description }} <b>Difficulty: </b>{{ item.difficulty }} <b>ID: </b>{{item.taskId }} <b>Done: </b>{{item.done}} </span>
+</div>
+
+<p>Todo: {{ todoListService.getTodos(false).length }}<br/>Done: {{ todoListService.getTodos(true).length }}</p>

@@ -1,0 +1,17 @@
+.bar-chart {
+    >div {
+        height: 40px;
+        margin-bottom: 10px;
+        white-space: nowrap;
+    }
+
+    .todo-bar {
+        background-color: #1497ae43;
+        height: 40px;
+    }
+
+    .done-bar {
+        background-color: #1497ae;
+        height: 40px;
+    }
+}

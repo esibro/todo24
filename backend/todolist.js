@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { timestamp } = require('rxjs');
 const Schema = mongoose.Schema;
 
  // Define a schema for the todo item

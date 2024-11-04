@@ -1,0 +1,12 @@
+<h2 mat-dialog-title>Task Suggestion</h2>
+<div mat-dialog-content>
+  <p>{{ data.message }}</p>
+  <ul>
+    <li *ngFor="let task of data.tasks">
+      {{ task.description }}
+    </li>
+  </ul>
+</div>
+<div mat-dialog-actions>
+  <button mat-button mat-dialog-close>Ok</button>
+</div>

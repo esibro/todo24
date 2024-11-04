@@ -1,6 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { Todo } from '../shared/todo';
 import { TodoListService } from '../shared/todolist.service';
+import { MatDialog } from '@angular/material/dialog';
+import { SamDialogComponent } from '../sam-dialog.component';
+import { TaskSuggestionDialogComponent } from '../task-suggestion-dialog/task-suggestion-dialog.component';
+
+
 
 @Component({
   selector: 'app-todo-list',
@@ -16,20 +21,62 @@ export class TodoListComponent implements OnInit {
   public showDone = false;
   public taskId = 1;
   public todoDone = false;
+  public showTaskForm: boolean = false;
 
    // Filter items only show without doneDate, order by dueDate
-   constructor(public todoListService: TodoListService) { }
+   constructor(public dialog: MatDialog, public todoListService: TodoListService) { }
 
    ngOnInit(): void {
 
     // Fetch todos via socket
-  this.todoListService.fetchTodos();
+    this.todoListService.fetchTodos();
+    
+    // Listen for todos
+    this.todoListService.onTodosFetched().subscribe((todos) => {
+      console.log('Todos fetched via socket:', todos);
+      this.todos = todos;
+    });
+    
+    this.todoListService.onTaskSuggestion().subscribe((suggestion) => {
+      this.openTaskSuggestionDialog(suggestion);
+    });
+  }
+
+ // Toggle form visibility
+ toggleTaskForm() {
+  this.showTaskForm = !this.showTaskForm;
+}
+
+  openTaskSuggestionDialog(suggestion: any): void {
+    // Open the dialog with the suggestion data
+    this.dialog.open(TaskSuggestionDialogComponent, {
+      data: suggestion,
+    });
+  }
+
+  openSAMPopup(): void {
+    const dialogRef = this.dialog.open(SamDialogComponent, {
+      width: '600px',
+      data: { arousal: null, valence: null },
+    });
   
-  // Listen for todos
-  this.todoListService.onTodosFetched().subscribe((todos) => {
-    console.log('Todos fetched via socket:', todos);
-    this.todos = todos;
-  });
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        const samData = { arousal: result.arousal, valence: result.valence, timestamp: new Date() };
+        this.todoListService.sendSAMData(samData);
+  
+        // Listen for the server response regarding todo existence
+        this.todoListService.checkForTodos().subscribe(response => {
+          if (response.message === 'Please create at least two tasks for task suggestions.') {
+            // Display a message to the user to create todos
+            alert(response.message);
+          } else {
+            console.log('Tasks exist, moving to the next part of the algorithm.');
+            // Proceed to the next steps for task suggestions
+          }
+        });
+      }
+    });
   }
 
   // Call the delete function with the todo's ID
@@ -51,6 +98,7 @@ export class TodoListComponent implements OnInit {
       this.todoDescription = '';
       this.todoDifficulty = 0;
       this.todoDone = false;
+      this.showTaskForm = false;
     }
   }
 

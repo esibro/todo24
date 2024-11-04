@@ -1,15 +1,33 @@
-<!-- <h2>OSC Data:</h2>
-<div *ngIf="oscData">
-  <pre>{{ oscData | json }}</pre>
-</div> -->
-
-<nav>
-  <ul>
-    <li><a routerLink="/todolist">Todo Liste</a></li>
-    <li><a routerLink="/dashboard">Dashboard</a></li>
-  </ul>
+<nav class="navbar navbar-expand-lg navbar-light" style="background-color: #1497ae43;">
+  <a class="navbar-brand" routerLink="/todolist">affectodo</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarText">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" routerLink="/todolist">My Tasks <span class="sr-only">(current)</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" routerLink="/dashboard">Dashboard</a>
+      </li>
+    </ul>
+    <span class="navbar-text" style="padding-right: 15px; color: #000000;">
+      Hello, Esma!
+    </span>
+    <a class="navbar-brand" style="padding-bottom: 15px;">
+      <img src="android-chrome-512x512.png" width="25" height="25" alt="">
+    </a>
+  </div>
 </nav>
 
 <main>
   <router-outlet></router-outlet>
 </main>
+
+<!-- <div *ngIf="oscData">
+  <h2>OSC Data (Mean over 60 seconds):</h2>
+  <div *ngFor="let key of getKeys(oscData)">
+    <p>{{ key }}: {{ oscData[key] }}</p>
+  </div>
+</div> -->

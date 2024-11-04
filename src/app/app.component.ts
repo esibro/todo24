@@ -6,8 +6,8 @@ import { io } from 'socket.io-client';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
- export class AppComponent {}
-/*export class AppComponent implements OnInit {
+ 
+export class AppComponent implements OnInit {
   private socket: any;
   public oscData: any;
 
@@ -21,6 +21,7 @@ import { io } from 'socket.io-client';
     console.log('Connected to WebSocket server');
   });
 
+  // Listen for the OSC data object containing means
   this.socket.on('oscData', (data: any) => {
     console.log('Received OSC data:', data);
     this.oscData = data;
@@ -30,4 +31,8 @@ import { io } from 'socket.io-client';
     console.log('Disconnected from WebSocket server');
   });
   } 
-}*/
+
+  getKeys(obj: any): string[] {
+    return Object.keys(obj);
+  }
+}

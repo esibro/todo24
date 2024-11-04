@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Todo } from './todo';
 import { io, Socket } from 'socket.io-client';
-import { Observable } from 'rxjs';
+import { Observable, fromEvent } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +14,27 @@ export class TodoListService {
     this.socket = io('http://localhost:3000'); // Make sure this URL is correct
     this.socket.on('connect', () => {
       console.log('Socket connected:', this.socket.id); // Log when socket connects
+    });
+  }
+
+  // Observable for task suggestions using fromEvent
+  onTaskSuggestion(): Observable<any> {
+    return fromEvent(this.socket, 'taskSuggestion');
+  }
+  
+  sendSAMData(samData: { arousal: number; valence: number; timestamp: Date }): void {
+    this.socket.emit('saveSAMData', samData);
+  }
+
+  checkForTodos(): Observable<any> {
+    return new Observable(observer => {
+      this.socket.on('noTodos', (response) => {
+        observer.next(response);
+      });
+
+      this.socket.on('todosExist', (response) => {
+        observer.next(response);
+      });
     });
   }
 

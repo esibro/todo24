@@ -5,6 +5,11 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const Todo = require('./todolist.js');
+const SAM = require('./sam.js');
+const EmotibitData = require('./emotibitData.js');
+const checkForTodos = require('./taskSuggestion');
+let dataReceived = false;
+
 
 // Create an Express app
 const app = express();
@@ -40,46 +45,76 @@ const udpPort = new osc.UDPPort({
     localPort: 12345 // Port where OSC data is coming in
 });
 
-/* udpPort.on("message", function (oscMsg) {
-    console.log("Received OSC message", oscMsg);
+udpPort.on("message", function (oscMsg) {
+    //console.log("Received OSC message", oscMsg);
     // Send the OSC message to the frontend through WebSocket
-    io.emit('oscData', oscMsg);
-}); */
+    //io.emit('oscData', oscMsg);
+    dataReceived = true;
+});
+
+// Function to check if data is being received
+function isDataIncoming() {
+  const incoming = dataReceived; // Check if data was received
+  dataReceived = false; // Reset flag for the next interval check
+  return incoming;
+}
+
+// Set an interval to periodically check for incoming data
+setInterval(() => {
+  if (isDataIncoming()) {
+      //console.log("Data is incoming from the OSC stream.");
+  } else {
+      //console.log("No data received from the OSC stream.");
+  }
+}, 1000); // Check every second
 
 udpPort.open();
 
-// Buffer to store the first 15 unique OSC messages
-let oscBuffer = [];
-let uniqueAddresses = new Set(); // Track unique addresses
+let oscBuffer = {};
 
-// Listen for incoming OSC messages and add them to the buffer
+// Listen for incoming OSC messages and add their args to the corresponding address group
 udpPort.on("message", function (oscMsg) {
-  const { address } = oscMsg;
+  const { address, args } = oscMsg;
 
-  // Only add the first 16 unique addresses
-  if (oscBuffer.length < 16 && !uniqueAddresses.has(address)) {
-    oscBuffer.push(oscMsg);  // Add message to buffer
-    uniqueAddresses.add(address);  // Track the unique address
-    console.log("Added OSC message:", oscMsg);
+  // Initialize an array for this address if not already present
+  if (!oscBuffer[address]) {
+    oscBuffer[address] = [];
   }
+
+  // Add the received args to the buffer for this address
+  oscBuffer[address].push(...args);  // Spread the args array into individual elements
+  //console.log(`Added OSC message for address ${address} with args: ${args}`);
 });
 
-// Function to send the first 15 unique OSC messages every 15 seconds
-function sendSampledData() {
-  if (oscBuffer.length > 0) {
-    // Emit the buffer with the first 15 addresses to the Angular client
-    io.emit('oscData', oscBuffer);
-    console.log('Sent sampled data to client:', oscBuffer);
-    // Clear the buffer and the set after sending
-    oscBuffer = [];
-    uniqueAddresses.clear();
-  } else {
-    //console.log('No data available in buffer for sampling.');
-  }
+// Function to calculate the mean of an array
+function calculateMean(arr) {
+  const sum = arr.reduce((acc, val) => acc + val, 0);
+  return sum / arr.length;
 }
 
-// Send the first 15 unique OSC addresses every 15 seconds (15000 milliseconds)
-setInterval(sendSampledData, 15000);
+// Function to send the mean of the args for each unique address every 30 seconds
+function sendSampledData() {
+  const result = {};
+
+  // Loop over each address in the buffer and calculate the mean of the args
+  for (let address in oscBuffer) {
+    if (oscBuffer[address].length > 0) {
+      const mean = calculateMean(oscBuffer[address]);
+      result[address] = mean;  // Store the mean value for this address
+      console.log(`Mean for address ${address}: ${mean}`);
+    }
+  }
+
+  // Emit the result (mean of all addresses) to the Angular client
+  io.emit('oscData', result);
+  console.log('Sent mean data to client:', result);
+
+  // Clear the buffer for the next 30-second period
+  oscBuffer = {};
+}
+
+// Send the first 2 unique OSC addresses every 30 seconds (30000 milliseconds)
+setInterval(sendSampledData, 60000);
 
 // Serve Angular frontend
 app.use(express.static(__dirname + '/dist/todo24'));
@@ -87,20 +122,6 @@ app.use(express.static(__dirname + '/dist/todo24'));
 // WebSocket connection
 io.on('connection', (socket) => {
     console.log('connected to WebSocket!');
-
-  /*   // DISPLAY TODOS
-
-    // Fetch all todos when requested
-  socket.on('fetchTodos', async () => {
-    try {
-      const todos = await Todo.find();
-      socket.emit('todos', todos);  // Send todos back to the client
-    } catch (error) {
-      console.error('Error fetching todos:', error);
-    }
-  }); */
-
-
 
     // UPDATE TODO
 
@@ -185,6 +206,49 @@ socket.on('todoData', async (data) => {
 });
 
 
+// SAVE SAM DATA
+
+// Listener for SAM data from frontend
+socket.on('saveSAMData', async (data) => {
+  try {
+    const samEntry = new SAM(data);
+    await samEntry.save();
+    console.log('SAM data saved:', samEntry);
+
+    // Get the mean of HR and EDA from the oscBuffer
+    const hrAddress = '/EmotiBit/0/HR';   // Example OSC address for heart rate
+    const edaAddress = '/EmotiBit/0/EDA'; // Example OSC address for EDA
+
+    const hrMean = oscBuffer[hrAddress] ? calculateMean(oscBuffer[hrAddress]) : null;
+    const edaMean = oscBuffer[edaAddress] ? calculateMean(oscBuffer[edaAddress]) : null;
+
+    if (hrMean !== null && edaMean !== null) {
+      // Create a new document in the EmotiBitData collection
+      const emotibitData = new EmotibitData({
+        hr: hrMean,
+        eda: edaMean
+      });
+
+      await emotibitData.save();
+      console.log('EmotiBit data saved:', emotibitData);
+
+      // Send confirmation to the frontend
+      socket.emit('emotibitDataSaved', { success: true, data: emotibitData });
+    } else {
+      console.error('HR or EDA mean data missing');
+      socket.emit('emotibitDataSaved', { success: false, message: 'HR or EDA data missing' });
+    }
+
+    // Check if there are any todos
+    await checkForTodos(socket);
+
+  } catch (err) {
+    console.error('Error saving SAM or EmotiBit data:', err);
+      socket.emit('noTodos', { message: 'Error saving data.' });
+  }
+});
+
+
   // Send data or respond to events from the client
   socket.on('disconnect', () => {
     console.log('Client disconnected');
@@ -198,4 +262,4 @@ server.listen(port, () => {
 });
 
 
-
+module.exports = isDataIncoming;

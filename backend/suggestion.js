@@ -7,7 +7,7 @@ const suggestionSchema = new mongoose.Schema({
   suggestedTasks: [
     {
       taskId: { type: Number, ref: 'Todo', required: true },
-      description: { type: String, required: true }, // Use `description` from Todo model
+      description: { type: String, required: true }
     },
   ],
 });

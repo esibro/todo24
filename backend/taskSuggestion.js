@@ -1,11 +1,31 @@
 const Todo = require('./todolist.js');  // Import the Todo model
 const SAM = require('./sam'); // Import the SAM model
+const User = require('./user.js');
 const EmotibitData = require('./emotibitData.js');
 const Suggestion = require('./suggestion'); 
 
-// Baseline arousal value
-const BASELINE_EDA = 1.3;
-const BASELINE_HR = 70;
+// Variables to store baseline values
+let BASELINE_HR;
+let BASELINE_EDA;
+
+// Function to fetch baseline values from the user table
+async function loadBaselines() {
+  try {
+    const user = await User.findOne(); // Fetch the only user baseline data
+    if (user) {
+      BASELINE_HR = user.hr_baseline;
+      BASELINE_EDA = user.eda_baseline;
+      console.log("Baseline values loaded:", { BASELINE_HR, BASELINE_EDA });
+    } else {
+      throw new Error("User baseline data not found");
+    }
+  } catch (error) {
+    console.error("Error loading baseline values:", error);
+  }
+}
+
+// Load baselines when the module is loaded
+loadBaselines();
 
 // Function to analyze HR arousal
 async function analyzeHRArousal() {
@@ -16,7 +36,7 @@ async function analyzeHRArousal() {
           console.error('No HR data found in EmotibitData.');
           return null; // Or handle this case as needed
         } 
-    
+
         const currentHR = latestEmotibitData.hr;
         // Calculate arousal level based on the baseline
         const percentage = (currentHR / BASELINE_HR) * 100;
@@ -59,11 +79,11 @@ async function analyzeEDAArousal() {
         //return percentage;
         let edaArousalLevel;
         
-        if (percentage > 150) {
+        if (percentage > 170) {
           edaArousalLevel = 9; // Very high arousal
-        } else if (percentage > 120 && percentage <= 150) {
+        } else if (percentage > 130 && percentage <= 170) {
             edaArousalLevel = 7; // High Arousal
-        } else if (percentage > 80 && percentage <= 120) {
+        } else if (percentage > 80 && percentage <= 130) {
             edaArousalLevel = 5 // Normal arousal
         } else if (percentage <= 80 && percentage > 50){
             edaArousalLevel = 3; // Low arousal
@@ -216,7 +236,9 @@ async function checkForTodos(socket) {
       } else {
           console.log('Enough todos exist');
           const hrArousalLevel = await analyzeHRArousal();
+          console.log('HR Arousal Level: ', hrArousalLevel);
           const edaArousalLevel = await analyzeEDAArousal();
+          console.log('EDA Arousal Level: ', edaArousalLevel);
           const physiologicalArousal = calculatePhysiologicalArousal(hrArousalLevel, edaArousalLevel);
           const trueArousal = await calculateTrueArousal(physiologicalArousal);
           const trueValence = await getValence();

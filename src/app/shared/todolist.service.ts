@@ -14,9 +14,15 @@ export class TodoListService {
     this.socket = io('http://localhost:3000'); // Make sure this URL is correct
     this.socket.on('connect', () => {
       console.log('Socket connected:', this.socket.id); // Log when socket connects
+      this.fetchTodos();
     });
   }
 
+  // Method to listen for OSC streaming status
+  onOSCStreaming(): Observable<boolean> {
+    return fromEvent<boolean>(this.socket, 'oscStreaming');
+  }
+  
   // Observable for task suggestions using fromEvent
   onTaskSuggestion(): Observable<any> {
     return fromEvent(this.socket, 'taskSuggestion');
@@ -48,14 +54,16 @@ export class TodoListService {
     this.socket.emit('fetchTodos');
   }
 
-  // Listen for todos
-  public onTodosFetched(): Observable<any[]> {
-    return new Observable((observer) => {
-      this.socket.on('todos', (data) => {
-        observer.next(data);
-      });
+ public onTodosFetched(): Observable<any[]> {
+  return new Observable((observer) => {
+    // Remove existing listeners
+    this.socket.off('todos');
+    this.socket.on('todos', (data) => {
+      this.todos = data;
+      observer.next(data);
     });
-  }
+  });
+}
 
   public getTodos(done?: boolean): Todo[] {
     return this.todos
@@ -108,21 +116,30 @@ export class TodoListService {
 
   // Emit the todo data to the server
   public sendTodoData(data: any) {
+    const { taskId, ...todoData } = data;
     this.socket.emit('todoData', data);
   }
 
-  // Listen for acknowledgment from the server (optional)
-  public onDataReceived(callback: (response: any) => void) {
-    this.socket.on('dataReceived', callback);
+   // Update the onDataReceived method to remove previous listeners
+   public onDataReceived(callback: (response: any) => void) {
+    // Remove any existing 'dataReceived' listeners
+    this.socket.off('dataReceived');
+    // Add new listener
+    this.socket.on('dataReceived', (response) => {
+      if (response.success && response.todo) {
+        this.todos.push(response.todo);
+      }
+      callback(response);
+    });
   }
-
-  // Listen for deletion acknowledgment
-  onDeleteConfirmed(callback: (response: any) => void) {
+ 
+  public onDeleteConfirmed(callback: (response: any) => void) {
+    this.socket.off('deleteConfirmed');
     this.socket.on('deleteConfirmed', callback);
   }
 
-  // Listen for update confirmation from the server
   public onUpdateConfirmed(callback: (response: any) => void) {
+    this.socket.off('updateConfirmed');
     this.socket.on('updateConfirmed', callback);
   }
 }

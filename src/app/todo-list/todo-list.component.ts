@@ -4,6 +4,7 @@ import { TodoListService } from '../shared/todolist.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SamDialogComponent } from '../sam-dialog.component';
 import { TaskSuggestionDialogComponent } from '../task-suggestion-dialog/task-suggestion-dialog.component';
+import { Subscription, timer } from 'rxjs';
 
 
 
@@ -22,24 +23,65 @@ export class TodoListComponent implements OnInit {
   public taskId = 1;
   public todoDone = false;
   public showTaskForm: boolean = false;
+  public oscStreaming: boolean = false;  // Indicates if OSC data is streaming
+  public noConnection: boolean = false;  // Indicates if there's no connection
+  private oscStreamingSubscription: Subscription | undefined;
+  private connectionTimeoutSubscription: Subscription | undefined;
+  private dataReceivedSubscription: any;
 
    // Filter items only show without doneDate, order by dueDate
    constructor(public dialog: MatDialog, public todoListService: TodoListService) { }
 
    ngOnInit(): void {
 
+    // Clean up previous subscriptions if they exist
+    if (this.dataReceivedSubscription) {
+      this.dataReceivedSubscription.unsubscribe();
+    }
+
+    // Listen for the OSC streaming status
+    this.oscStreamingSubscription = this.todoListService.onOSCStreaming().subscribe((status: boolean) => {
+      this.oscStreaming = status;
+      this.noConnection = !status; // If streaming is false, set noConnection to true
+      this.resetConnectionTimeout(); // Reset the connection timeout
+      console.log('OSC Streaming status:', status); // Add logging to debug
+    });
+
     // Fetch todos via socket
     this.todoListService.fetchTodos();
     
-    // Listen for todos
+    // Subscribe to fetched todos
     this.todoListService.onTodosFetched().subscribe((todos) => {
       console.log('Todos fetched via socket:', todos);
       this.todos = todos;
-    });
+      this.todoListService.setTodos(todos); // Update the service's todos array
+  });
     
     this.todoListService.onTaskSuggestion().subscribe((suggestion) => {
       this.openTaskSuggestionDialog(suggestion);
     });
+  }
+
+   // Reset or start the connection timeout if no data is received
+   private resetConnectionTimeout() {
+    if (this.connectionTimeoutSubscription) {
+      this.connectionTimeoutSubscription.unsubscribe();
+    }
+    this.connectionTimeoutSubscription = timer(5000).subscribe(() => {
+      if (!this.oscStreaming) {
+        this.noConnection = true;  // No data received for 5 seconds
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    // Cleanup all subscriptions when component is destroyed
+    if (this.oscStreamingSubscription) {
+      this.oscStreamingSubscription.unsubscribe();
+    }
+    if (this.connectionTimeoutSubscription) {
+      this.connectionTimeoutSubscription.unsubscribe();
+    }
   }
 
  // Toggle form visibility
@@ -111,10 +153,8 @@ export class TodoListComponent implements OnInit {
       console.log('Done clicked');
   }
 
-  // Send todo data to the server
   submitTodo() {
     const todoData = {
-      taskId : this.taskId++,
       difficulty: this.todoDifficulty,
       description: this.todoDescription,
       done: this.todoDone
@@ -122,12 +162,18 @@ export class TodoListComponent implements OnInit {
 
     this.todoListService.sendTodoData(todoData);
 
-    // Listen for acknowledgment from the server
+    // Set up single listener for the response
     this.todoListService.onDataReceived((response) => {
-      console.log('Server response:', response);
+      if (response.success) {
+        // Clear form fields
+        this.todoDescription = '';
+        this.todoDifficulty = 0;
+        this.todoDone = false;
+        this.showTaskForm = false;
+      } else {
+        console.error('Error saving todo:', response.error);
+      }
     });
-
-    this.addTodo();
   }
 
 }

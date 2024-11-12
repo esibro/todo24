@@ -9,6 +9,8 @@ const SAM = require('./sam.js');
 const EmotibitData = require('./emotibitData.js');
 const checkForTodos = require('./taskSuggestion');
 let dataReceived = false;
+const Counter = require('./counter.js');
+const User = require('./user.js');
 
 
 // Create an Express app
@@ -59,18 +61,34 @@ function isDataIncoming() {
   return incoming;
 }
 
-// Set an interval to periodically check for incoming data
 setInterval(() => {
-  if (isDataIncoming()) {
-      //console.log("Data is incoming from the OSC stream.");
+  const streaming = isDataIncoming();
+  
+  // Emit the OSC streaming status to the client
+  io.emit('oscStreaming', streaming);
+  
+  if (streaming) {
+    //console.log("Data is incoming from the OSC stream.");
   } else {
-      //console.log("No data received from the OSC stream.");
+    //console.log("No data received from the OSC stream.");
   }
 }, 1000); // Check every second
 
 udpPort.open();
 
 let oscBuffer = {};
+
+// Update the getNextTaskId function
+async function getNextTaskId() {
+  try {
+      const counter = await Counter.getNextSequence('taskId');
+      console.log('Generated new task ID:', counter);
+      return counter;
+  } catch (error) {
+      console.error('Error generating task ID:', error);
+      throw error;
+  }
+}
 
 // Listen for incoming OSC messages and add their args to the corresponding address group
 udpPort.on("message", function (oscMsg) {
@@ -107,7 +125,7 @@ function sendSampledData() {
 
   // Emit the result (mean of all addresses) to the Angular client
   io.emit('oscData', result);
-  console.log('Sent mean data to client:', result);
+  //console.log('Sent mean data to client:', result);
 
   // Clear the buffer for the next 30-second period
   oscBuffer = {};
@@ -122,6 +140,33 @@ app.use(express.static(__dirname + '/dist/todo24'));
 // WebSocket connection
 io.on('connection', (socket) => {
     console.log('connected to WebSocket!');
+
+    socket.on('getUserName', async () => {
+      try {
+          const user = await User.findOne();
+          
+          if (user) {
+              socket.emit('userName', { name: user.name });
+          } else {
+              console.log('No user found in database');
+              socket.emit('userName', { name: 'User' });
+          }
+      } catch (error) {
+          console.error('Error fetching user name:', error);
+          socket.emit('userName', { name: 'User' });
+      }
+  });
+
+    socket.on('fetchTodos', async () => {
+      try {
+          const todos = await Todo.find({});
+          socket.emit('todos', todos);
+          //console.log('Todos sent to client:', todos);
+      } catch (error) {
+          console.error('Error fetching todos:', error);
+          socket.emit('todos', []);
+      }
+  });
 
     // UPDATE TODO
 
@@ -150,12 +195,12 @@ io.on('connection', (socket) => {
         console.log('Todo Updated.');
       } else {
         socket.emit('updateConfirmed', { success: false, message: 'Todo not found.' });
-        onsole.log('Todo not found.');
+        console.log('Todo not found.');
       }
     } catch (error) {
       console.error('Error updating todo:', error);
       socket.emit('updateConfirmed', { success: false, message: 'Error updating todo.' });
-      onsole.log('Todo not updated.');
+      console.log('Todo not updated.');
     }
   }); 
 
@@ -192,17 +237,49 @@ io.on('connection', (socket) => {
 
   // SAVE TODO
 
-     // When receiving data from the client
-socket.on('todoData', async (data) => {
-  console.log('Received data:', data);
+ // Update the todoData socket handler
+ socket.on('todoData', async (data) => {
+  console.log('Received todo data:', data);
+  
+  try {
+      // Check if this exact todo already exists
+      const existingTodo = await Todo.findOne({
+          description: data.description,
+          difficulty: data.difficulty,
+          done: data.done
+      });
 
-  // Store the data in MongoDB
-  const todo = new Todo(data);
-  await todo.save();
+      if (existingTodo) {
+          console.log('Todo already exists, skipping creation');
+          socket.emit('dataReceived', { 
+              success: false, 
+              error: 'Todo already exists'
+          });
+          return;
+      }
 
-  // Acknowledge receipt to the client
-  socket.emit('dataReceived', { success: true });
-
+      // Get the next taskId from the counter
+      const taskId = await getNextTaskId();
+      
+      // Create new todo with the generated taskId
+      const todo = new Todo({
+          ...data,
+          taskId: taskId
+      });
+      
+      await todo.save();
+      console.log('Saved todo with ID:', taskId);
+      
+      // Send back the saved todo with the new taskId
+      socket.emit('dataReceived', { success: true, todo: todo });
+      
+  } catch (error) {
+      console.error('Error saving todo:', error);
+      socket.emit('dataReceived', { 
+          success: false, 
+          error: error.message 
+      });
+  }
 });
 
 

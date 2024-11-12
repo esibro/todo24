@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { io } from 'socket.io-client';
+import { UserService } from './shared/user.service';
 
 @Component({
   selector: 'app-root',
@@ -10,8 +11,22 @@ import { io } from 'socket.io-client';
 export class AppComponent implements OnInit {
   private socket: any;
   public oscData: any;
+  userName: string = '';
+  
+  constructor(private userService: UserService) {}
 
    ngOnInit() {
+
+    this.userService.getUserName().subscribe(
+      name => {
+        this.userName = name;
+      },
+      error => {
+        console.error('Error fetching user name:', error);
+        this.userName = 'User'; // Fallback name
+      }
+    );
+
     this.socket = io('http://localhost:3000', {
       withCredentials: true, // Include credentials if necessary
     });

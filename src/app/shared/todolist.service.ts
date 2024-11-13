@@ -14,7 +14,8 @@ export class TodoListService {
   constructor() { 
     this.socket = io(environment.websocketUrl, {
       withCredentials: true,
-      transports: ['websocket']
+      transports: ['websocket'],
+      path: '/socket.io'  // Make sure this matches your server configuration
     });
     this.socket.on('connect', () => {
       console.log('Socket connected:', this.socket.id); // Log when socket connects

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { io } from 'socket.io-client';
 import { UserService } from './shared/user.service';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -27,8 +28,9 @@ export class AppComponent implements OnInit {
       }
     );
 
-    this.socket = io('http://localhost:3000', {
-      withCredentials: true, // Include credentials if necessary
+    this.socket = io(environment.websocketUrl, {
+      withCredentials: true,
+      transports: ['websocket']
     });
 
     // Log connection events

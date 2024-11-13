@@ -26,7 +26,7 @@ mongoose.connect(dbURI)
 // Update CORS configuration to accept connections from your hosted frontend
 const allowedOrigins = [
   'http://localhost:4200',
-  'http://affectodo.at',
+  'https://affectodo.at',
   'https://affectodo.netlify.app'
 ];
 

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Todo } from './todo';
 import { io, Socket } from 'socket.io-client';
 import { Observable, fromEvent } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +12,10 @@ export class TodoListService {
   private socket: Socket;
 
   constructor() { 
-    this.socket = io('http://localhost:3000'); // Make sure this URL is correct
+    this.socket = io(environment.websocketUrl, {
+      withCredentials: true,
+      transports: ['websocket']
+    });
     this.socket.on('connect', () => {
       console.log('Socket connected:', this.socket.id); // Log when socket connects
       this.fetchTodos();

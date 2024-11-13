@@ -23,12 +23,17 @@ mongoose.connect(dbURI)
 .then((result) => console.log('connected to mongodb'))
 .catch((err) => console.log(err));
 
-
+// Update CORS configuration to accept connections from your hosted frontend
+const allowedOrigins = [
+  'http://localhost:4200',
+  'http://affectodo.at',
+  'https://affectodo.netlify.app'
+];
 
 // Setup Socket.IO with CORS options
 const io = socketIo(server, {
     cors: {
-      origin: "http://localhost:4200", // Angular app's origin
+      origin: allowedOrigins, // Angular app's origin
       methods: ["GET", "POST"],
       credentials: true // Allow credentials (cookies, etc.), if needed
     }
@@ -36,7 +41,7 @@ const io = socketIo(server, {
 
   // Enable CORS for all routes
 app.use(cors({
-    origin: "http://localhost:4200", // Angular app's origin
+    origin: allowedOrigins, // Angular app's origin
     methods: ["GET", "POST"],
     credentials: true
   }));
@@ -334,9 +339,8 @@ socket.on('saveSAMData', async (data) => {
 
 // Start server
 const port = process.env.PORT || 3000;
-server.listen(port, () => {
+server.listen(port, '0.0.0.0', () => {
     console.log(`Server listening on port ${port}`);
 });
-
 
 module.exports = isDataIncoming;

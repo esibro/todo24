@@ -184,7 +184,7 @@ async function suggestTask(trueArousal, trueValence) {
       difficultyLevels = [1, 2];
       message = 'Seems like you are very calm right now. How about something comfortable to start off with?';
 
-    } else if (trueArousal >= 4 && trueArousal <= 7 && trueValence >= 1 && trueValence <= 5) {
+    } else if (trueArousal >= 4 && trueArousal <= 7 && trueValence >= 1 && trueValence < 5) {
       // Prioritize tasks with difficulty 3 fallback to 1 or 2 if no matches
       difficultyLevels = [[3], [1, 2]];
       message = 'Seems like you are in good condition for a moderate task. How about one of these?';
